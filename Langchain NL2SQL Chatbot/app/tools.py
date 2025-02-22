@@ -185,13 +185,13 @@ def create_visualization(query: str, type_of_graph: str, title: str, x: str, y: 
         fig.update_layout(
             title={
                 'text': title,
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'size': 20}
+                'x': 0.05,
+                'xanchor': 'left',
+                'font': {'color': 'black', 'size': 20}
             },
             plot_bgcolor='white',
             paper_bgcolor='white',
-            font={'color': 'black'},
+            font=dict(color='black'),
             showlegend=True,
             margin=dict(t=50, l=50, r=50, b=50)
         )
@@ -199,7 +199,7 @@ def create_visualization(query: str, type_of_graph: str, title: str, x: str, y: 
         # Update axes with better visibility
         if type_of_graph not in ['pie']:
             fig.update_xaxes(
-                showline=True,
+                showline=False,
                 linewidth=2,
                 linecolor='black',
                 title=x,
@@ -207,7 +207,7 @@ def create_visualization(query: str, type_of_graph: str, title: str, x: str, y: 
             )
             if y:
                 fig.update_yaxes(
-                    showline=True,
+                    showline=False,
                     linewidth=2,
                     linecolor='black',
                     title=y,
