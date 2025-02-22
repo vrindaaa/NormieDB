@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 from agents import sql_crew
+from nosql_agents import sql_crew_nosql
 import os
 import pandas as pd
 from pyprojroot import here
@@ -55,48 +56,56 @@ if prompt := st.chat_input("Ask me anything about the database"):
                     "messages": recent_messages
                 }
 
-                print(prompt)
-                response = sql_crew.kickoff(inputs=inputs)
-                
-                # Check if response contains visualization specifications
-                if "VISUALIZATION:" in response:
-                    parts = response.split("VISUALIZATION:")
-                    analysis = parts[0].replace("ANALYSIS:", "").strip()
-                    viz_specs = parts[1].strip()
-                    
-                    # Parse visualization parameters
-                    viz_type = viz_specs.split("TYPE:")[1].split("\n")[0].strip()
-                    x_axis = viz_specs.split("X_AXIS:")[1].split("\n")[0].strip()
-                    y_axis = viz_specs.split("Y_AXIS:")[1].split("\n")[0].strip() if "Y_AXIS:" in viz_specs else None
-                    title = viz_specs.split("TITLE:")[1].split("\n")[0].strip()
-                    query = viz_specs.split("QUERY:")[1].strip()
-                    
-                    # Get data from query
-                    data = pd.read_sql_query(query, engine)
-                    
-                    # Create visualization
-                    viz_result = create_visualization(
-                        data=data,
-                        type_of_graph=viz_type,
-                        title=title,
-                        x=x_axis,
-                        y=y_axis
-                    )
-                    
-                    # Display analysis
-                    st.markdown(analysis)
-                    
-                    # Save in session state
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": f"{analysis}\n\n{viz_result}"
-                    })
-                else:
+                if "stories" in prompt:
+                    response = sql_crew_nosql.kickoff(inputs=inputs)
                     st.markdown(response)
                     st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": response
-                    })
+                            "role": "assistant",
+                            "content": response
+                        })
+
+                else:    
+                    response = sql_crew.kickoff(inputs=inputs)
+                    
+                    # Check if response contains visualization specifications
+                    if "VISUALIZATION:" in response:
+                        parts = response.split("VISUALIZATION:")
+                        analysis = parts[0].replace("ANALYSIS:", "").strip()
+                        viz_specs = parts[1].strip()
+                        
+                        # Parse visualization parameters
+                        viz_type = viz_specs.split("TYPE:")[1].split("\n")[0].strip()
+                        x_axis = viz_specs.split("X_AXIS:")[1].split("\n")[0].strip()
+                        y_axis = viz_specs.split("Y_AXIS:")[1].split("\n")[0].strip() if "Y_AXIS:" in viz_specs else None
+                        title = viz_specs.split("TITLE:")[1].split("\n")[0].strip()
+                        query = viz_specs.split("QUERY:")[1].strip()
+                        
+                        # Get data from query
+                        data = pd.read_sql_query(query, engine)
+                        
+                        # Create visualization
+                        viz_result = create_visualization(
+                            data=data,
+                            type_of_graph=viz_type,
+                            title=title,
+                            x=x_axis,
+                            y=y_axis
+                        )
+                        
+                        # Display analysis
+                        st.markdown(analysis)
+                        
+                        # Save in session state
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": f"{analysis}\n\n{viz_result}"
+                        })
+                    else:
+                        st.markdown(response)
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": response
+                        })
                 
             except Exception as e:
                 error_message = f"An error occurred: {str(e)}"
