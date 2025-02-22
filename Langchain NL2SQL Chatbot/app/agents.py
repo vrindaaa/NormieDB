@@ -1,11 +1,8 @@
 from crewai import Agent, Crew, Process, Task
 from crewai_tools import tool
 from textwrap import dedent
-from tools import sql_tool, list_tables, tables_schema, execute_sql, check_sql, create_visualization
+from tools import decide_route, lookup_vector_db, sql_tool, list_tables, tables_schema, execute_sql, check_sql, create_visualization
 from langchain_utils import get_llm
-from langchain.prompts import PromptTemplate
-from langchain.agents import initialize_agent, AgentType
-from langchain.tools import Tool
 
 llm = get_llm()
 sql_dev = Agent(
@@ -24,6 +21,21 @@ sql_dev = Agent(
     ),
     llm=llm,
     tools=[list_tables, tables_schema, execute_sql, check_sql, sql_tool],
+    allow_delegation=False,
+)
+
+vector_db_lookup_agent = Agent(
+    role="Vector DB Lookup Agent",
+    goal="You receive an unstructured query and return the relevant document chunks or answers by performing a vector database lookup.",
+    backstory=dedent(
+        """
+        You specialize in semantic search and retrieval from unstructured data.
+        Your expertise lies in converting unstructured queries into effective vector database searches,
+        ensuring that the most relevant document chunks are returned based on vector similarity.
+        """
+    ),
+    llm=llm,
+    tools=[lookup_vector_db],
     allow_delegation=False,
 )
 
@@ -104,6 +116,16 @@ extract_data = Task(
     agent=sql_dev,
 )
 
+routing_task = Task(
+    description=dedent(
+        """
+        Analyze the incoming query to determine whether it requires data from the SQL database or from unstructured documents.
+        Return either "SQL" or "Unstructured".
+        """
+    ),
+    expected_output="Data source indicator"
+)
+
 visualize_data = Task(
     description=dedent(
         """
@@ -150,6 +172,20 @@ write_report = Task(
     expected_output="Markdown report",
     agent=report_writer,
     context=[analyze_data],
+)
+
+routing_expert = Agent(
+    role="Decide the route based on the query",
+    goal="Decide whether to return SQL or Unstructured",
+    backstory=dedent(
+        """
+        You are an expert in decision making. When an input is given you have to decide whether to return SQL or UnS
+
+        Run the `decide_route` tool with the input query to get a response.
+        """
+    ),
+    llm=llm,
+    tools=[decide_route]
 )
 
 # Create the crew

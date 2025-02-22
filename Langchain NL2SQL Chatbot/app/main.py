@@ -3,46 +3,17 @@ from openai import OpenAI
 from agents import sql_crew
 import os
 import pandas as pd
+from pyprojroot import here
+import yaml
 
-from sqlalchemy import create_engine, inspect
 import pandas as pd
+from prepare_sql_db import PrepareSQLFromTabularData
+from prepare_vector_db import PrepareVectorDB
 
 db_user = os.getenv("db_user")
 db_password = os.getenv("db_password")
 db_host = os.getenv("db_host")
 db_name = os.getenv("db_name")
-
-class PrepareSQLFromTabularData:
-    """
-    A class that prepares a SQL database from CSV or XLSX files within a specified directory.
-    """
-    def __init__(self, files_dir) -> None:
-        self.files_directory = files_dir
-        self.file_dir_list = os.listdir(files_dir)
-        self.db = create_engine(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}")
-        st.write("Connected to MySQL database at localhost.")
-
-    def _prepare_db(self):
-        for file in self.file_dir_list:
-            full_file_path = os.path.join(self.files_directory, file)
-            file_name, file_extension = os.path.splitext(file)
-            if file_extension == ".csv":
-                df = pd.read_csv(full_file_path)
-            elif file_extension == ".xlsx":
-                df = pd.read_excel(full_file_path)
-            else:
-                st.error(f"Unsupported file type for file: {file}")
-                continue
-            df.to_sql(file_name, self.db, index=False, if_exists="replace")
-        st.success("All files have been saved into the SQL database.")
-
-    def _validate_db(self):
-        insp = inspect(self.engine)
-        table_names = insp.get_table_names()
-        st.info("Available tables in SQL DB: " + ", ".join(table_names))
-
-    def run_pipeline(self):
-        self._prepare_db()
 
 st.title("SQL Database Chat Assistant")
 
@@ -83,6 +54,8 @@ if prompt := st.chat_input("Ask me anything about the database"):
                     "query": prompt,
                     "messages": recent_messages
                 }
+
+                print(prompt)
                 response = sql_crew.kickoff(inputs=inputs)
                 
                 # Check if response contains visualization specifications
@@ -132,6 +105,30 @@ if prompt := st.chat_input("Ask me anything about the database"):
                     "role": "assistant",
                     "content": error_message
                 })
+
+uploaded_vector_file = st.file_uploader("Upload a PDF or TXT file for unstructured data", type=["pdf", "txt"])
+if uploaded_vector_file:
+    with open(here("Langchain NL2SQL Chatbot/configs/tools_config.yml")) as cfg:
+        app_config = yaml.load(cfg, Loader=yaml.FullLoader)
+
+    vector_upload_dir = "vector_uploads"
+    if not os.path.exists(vector_upload_dir):
+        os.makedirs(vector_upload_dir)
+    file_path = os.path.join(vector_upload_dir, uploaded_vector_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_vector_file.getbuffer())
+    st.success(f"File '{uploaded_vector_file.name}' uploaded successfully!")
+    
+    vector_pipeline = PrepareVectorDB(
+         doc_dir=vector_upload_dir,
+         chunk_size=app_config["unstructured_data"]["chunk_size"],
+         chunk_overlap=app_config["unstructured_data"]["chunk_overlap"],
+         embedding_model=app_config["unstructured_data"]["embedding_model"],
+         vectordb_dir=app_config["unstructured_data"]["vectordb"],
+         collection_name=app_config["unstructured_data"]["collection_name"]
+    )
+    vector_pipeline.run()
+
 
 # File uploader section
 uploaded_file = st.file_uploader("Upload a CSV or XLSX file to insert new data", type=["csv", "xlsx"])

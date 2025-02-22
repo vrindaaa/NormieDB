@@ -11,10 +11,19 @@ from langchain_community.tools.sql_database.tool import (
     QuerySQLCheckerTool,
     QuerySQLDataBaseTool,
 )
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
 from plotly import graph_objects as go
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from pyprojroot import here
+import yaml
+from vector_db_query_tool import VectorDBQueryTool
+
+
+with open(here("Langchain NL2SQL Chatbot/configs/tools_config.yml")) as cfg:
+        app_config = yaml.load(cfg, Loader=yaml.FullLoader)
 
 llm = get_llm()
 
@@ -26,6 +35,15 @@ db_name = os.getenv("db_name")
 connection_string = f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}"
 db = SQLDatabase.from_uri(connection_string)
 engine = create_engine(connection_string)
+
+vectordb_path = here(app_config["unstructured_data"]["vectordb"])
+if os.path.exists(vectordb_path):
+    vector_db_instance = Chroma(
+        persist_directory=str(vectordb_path),
+        collection_name=app_config["unstructured_data"]["collection_name"],
+        embedding_function=OpenAIEmbeddings(model=app_config["unstructured_data"]["embedding_model"])
+    )
+
 
 @tool("list_tables")
 def list_tables() -> str:
@@ -203,3 +221,21 @@ def create_visualization(query: str, type_of_graph: str, title: str, x: str, y: 
         
     except Exception as e:
         return f"Error creating visualization: {str(e)}"
+ 
+@tool("lookup_vector_db")
+def lookup_vector_db(query: str) -> str:
+    """
+    Input is a query string for searching the unstructured document store (vector DB).
+    Returns the relevant document chunks or answers based on vector similarity.
+    """
+    tool = VectorDBQueryTool(vector_db=vector_db_instance)
+    return tool.invoke(query)
+
+@tool("decide_route")
+def decide_route(query: str) -> str:
+    """
+    Input is a query string for searching the unstructured document store (vector DB).
+    Returns "SQL" or "UnS"
+    """
+    print(query)
+    return "SQL"
