@@ -21,11 +21,11 @@ db_name = os.getenv("db_name")
 STREAMLIT = os.getenv("STREAMLIT")
 client = OpenAI(api_key=STREAMLIT)
 
-# st.set_page_config(
-#     page_title="SQL Query Agent",
-#     page_icon="🤖",
-#     layout="wide"
-# )
+st.set_page_config(
+    page_title="SQL Query Generation",
+    page_icon="🤖",
+    layout="wide"
+)
 
 # Set a default model
 if "openai_model" not in st.session_state:
@@ -39,25 +39,8 @@ if "structured_data_analysis" not in st.session_state:
 if "unstructured_data_analysis" not in st.session_state:
     st.session_state["unstructured_data_analysis"] = []
 
-st.title("SQL Query Agent")
+st.title("SQL Query Generation")
 st.write("I can help you query your database using natural language! Just ask me what you want to know.")
-
-# Set OpenAI API key from Streamlit secrets
-STREAMLIT = os.getenv("STREAMLIT")
-client = OpenAI(api_key=STREAMLIT)
-
-# Set a default model
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-3.5-turbo"
-if "sql_query" not in st.session_state:
-    st.session_state["sql_query"] = []
-if "database_updates" not in st.session_state:
-    st.session_state["database_updates"] = []
-if "structured_data_analysis" not in st.session_state:
-    st.session_state["structured_data_analysis"] = []
-if "unstructured_data_analysis" not in st.session_state:
-    st.session_state["unstructured_data_analysis"] = []
-
 
 # Initialize chat history
 if "messages" not in st.session_state:

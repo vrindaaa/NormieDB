@@ -189,7 +189,7 @@ routing_expert = Agent(
 )
 
 # Create the crew
-sql_crew = Crew(
+data_insights_crew = Crew(
     agents=[sql_dev, visualization_expert, data_analyst, report_writer],
     tasks=[extract_data, visualize_data, analyze_data, write_report],
     process=Process.sequential,
@@ -199,4 +199,4 @@ sql_crew = Crew(
 )
 
 # Export the crew
-__all__ = ['sql_crew']
+__all__ = ['data_insights_crew','sql_dev','vector_db_lookup_agent','data_analyst','report_writer','visualization_expert','extract_data','visualize_data','analyze_data','write_report','routing_expert']

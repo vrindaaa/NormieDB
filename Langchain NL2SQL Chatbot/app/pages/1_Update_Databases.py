@@ -6,15 +6,15 @@ from prepare_sql_db import PrepareSQLFromTabularData
 from prepare_vector_db import PrepareVectorDB
 
 st.set_page_config(
-    page_title="Database Schema Updates",
+    page_title="Autonomous Database Updates",
     page_icon="📊",
 )
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-st.title("Update Databases")
-st.write("Upload any csv or xlsx to your database")
+st.title("Autonomous Database Updates")
+st.write("Upload any csv or xlsx to automatically update your database")
 
 # Structured data upload
 # st.header("Upload Structured Data")
