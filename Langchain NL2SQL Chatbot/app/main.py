@@ -179,34 +179,56 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 def sql_query_agent(inputs):
-    response = sql_crew.kickoff(inputs=inputs)
+    try:
+        response = sql_crew.kickoff(inputs=inputs)
 
-    print("response", response)
-    
-    # Parse query and results
-    if "QUERY:" in response and "RESULTS:" in response:
-        parts = response.split("RESULTS:")
-        query_part = parts[0].replace("QUERY:", "").strip()
-        results = parts[1].strip().replace("`", "").replace(";\n", "\n").strip()
+        print("response", response)
         
-        # Display the SQL query
-        st.markdown("The following query was executed:")
-        st.markdown(query_part)
-        # st.code(query_part, language="sql")
+        # Parse query and results
+        if "QUERY:" in response and "RESULTS:" in response:
+            parts = response.split("RESULTS:")
+            query_part = parts[0].replace("QUERY:", "").strip()
+            results = parts[1].strip().replace("`", "").replace(";\n", "\n").strip()
+            
+            # Display the SQL query
+            st.markdown("The following query was executed:")
+            st.markdown("```sql\n" + query_part + "\n```")
+            # st.code(query_part, language="sql")
+            
+            # Display the results in a table
+            df = display_table.run(results)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Save in session state
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": "```sql\n" + query_part + "\n```",
+                "type": "markdown"
+            })
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": df,
+                "type": "dataframe"
+            })
+        else:
+            st.markdown(response)
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": response,
+                "type": "markdown"
+            })
         
-        # Display the results in a table
-        display_table.run(results)
-        
-        # Save in session state
+    except Exception as e:
+        error_message = f"An error occurred: {str(e)}"
+        st.error(error_message)
         st.session_state.messages.append({
             "role": "assistant",
-            "content": response
-        })
-    else:
-        st.markdown(response)
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response
+            "content": error_message,
+            "type": "markdown"
         })
 
 def update_databases_agent(inputs):
@@ -241,6 +263,9 @@ for message in st.session_state.messages:
             st.components.v1.html(message["visualization"], height=500)
         elif message["type"] == "markdown":
             st.markdown(message["content"])
+        elif message["type"] == "image":
+            st.image(message["content"],
+                     use_container_width=True)
         elif message["type"] == "dataframe":
             st.dataframe(
                 message["content"],
@@ -264,10 +289,25 @@ if prompt := st.chat_input("Ask me anything about the database"):
                     "query": prompt,
                     "messages": []
                 }
+                print(mode)
                 if mode == "SQL Query":
                     sql_query_agent(inputs)
                 elif mode == "Update Databases":
-                    update_databases_agent(inputs)
+                    uploaded_file = st.file_uploader("Upload a CSV or XLSX file to create new tables", type=["csv", "xlsx"])
+                    if uploaded_file:
+                        print("Uploaded file")
+                        # Save the uploaded file to a designated 'uploads' directory
+                        upload_dir = "uploads"
+                        if not os.path.exists(upload_dir):
+                            os.makedirs(upload_dir)
+                        file_path = os.path.join(upload_dir, uploaded_file.name)
+                        with open(file_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        st.success(f"File '{uploaded_file.name}' uploaded successfully!")
+                        print("Done here")
+                        # Run your pipeline to create the SQL database from the uploaded file(s)
+                        pipeline = PrepareSQLFromTabularData(upload_dir)
+                        pipeline.run_pipeline()
                 elif mode == "Structured Data Analysis":
                     # structured_data_analysis_agent(inputs)
                     pass

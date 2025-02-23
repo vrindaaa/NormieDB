@@ -2,6 +2,8 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine, inspect
 import streamlit as st
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy_schemadisplay import create_schema_graph
 
 db_user = os.getenv("db_user")
 db_password = os.getenv("db_password")
@@ -38,5 +40,52 @@ class PrepareSQLFromTabularData:
         table_names = insp.get_table_names()
         st.info("Available tables in SQL DB: " + ", ".join(table_names))
 
+    def _visualize_schema(self):
+        metadata = MetaData()
+        metadata.reflect(bind=self.db)
+
+        # Define styling options
+        relation_options = {
+            "color": "#008080",  # Foreign key relationship lines
+            "penwidth": "1.5"
+        }
+
+        format_table_name = {
+            "color": "blue",  # Green table name text
+            "fontsize": 14,
+            "bold": True
+        }
+
+        # Generate the schema graph with styling
+        graph = create_schema_graph(metadata=metadata,
+                                    engine=self.db,
+                                    show_datatypes=False,
+                                    show_indexes=False,
+                                    rankdir='LR',
+                                    concentrate=True,
+                                    relation_options=relation_options,
+                                    format_table_name=format_table_name)
+
+
+
+
+        graph.set("label",  "Schema Diagram -- "+ db_name) 
+        graph.set("fontsize", "20")  
+        graph.set("labelloc", "t")  
+        graph.set("fontcolor", "black")
+
+
+
+
+        graph.write_png('./database_schema_diagram.png')
+        st.image('./database_schema_diagram.png',
+                 use_container_width=True)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": "./database_schema_diagram.png",
+            "type": "image"
+        })
+
     def run_pipeline(self):
         self._prepare_db()
+        self._visualize_schema()
