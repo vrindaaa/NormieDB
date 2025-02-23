@@ -31,39 +31,8 @@ if "openai_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-def sql_query_agent(inputs):
-    response = sql_crew.kickoff(inputs=inputs)
 
-    print("response", response)
-    
-    # Parse query and results
-    if "QUERY:" in response and "RESULTS:" in response:
-        parts = response.split("RESULTS:")
-        query_part = parts[0].replace("QUERY:", "").strip()
-        results = parts[1].strip().replace("`", "").replace(";\n", "\n").strip()
-        
-        # Display the SQL query
-        st.markdown("The following query was executed:")
-        st.markdown(query_part)
-        # st.code(query_part, language="sql")
-        
-        # Display the results in a table
-        display_table.run(results)
-        
-        # Save in session state
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response
-        })
-    else:
-        st.markdown(response)
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response
-        })
-
-
-def get_recent_messages(messages, limit=5):
+def get_recent_messages(messages, limit=10):
     """Get only the most recent messages to stay within token limits"""
     return messages[-limit:] if len(messages) > limit else messages
 
@@ -72,11 +41,20 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if "visualization" in message:
             st.components.v1.html(message["visualization"], height=500)
-        st.markdown(message["content"])
+        elif message["type"] == "markdown":
+            st.markdown(message["content"])
+        elif message["type"] == "dataframe":
+            st.dataframe(
+                message["content"],
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.markdown(message["content"])
 
 # Accept user input
 if prompt := st.chat_input("Ask me anything about the database"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt, "type": "markdown"})
     with st.chat_message("user"):
         st.markdown(prompt)
 
@@ -86,16 +64,57 @@ if prompt := st.chat_input("Ask me anything about the database"):
                 recent_messages = get_recent_messages(st.session_state.messages)
                 inputs = {
                     "query": prompt,
-                    "messages": recent_messages
+                    "messages": []#[recent_messages[-1]]
                 }
-                sql_query_agent(inputs)
+                response = sql_crew.kickoff(inputs=inputs)
+
+                print("response", response)
+                
+                # Parse query and results
+                if "QUERY:" in response and "RESULTS:" in response:
+                    parts = response.split("RESULTS:")
+                    query_part = parts[0].replace("QUERY:", "").strip()
+                    results = parts[1].strip().replace("`", "").replace(";\n", "\n").strip()
+                    
+                    # Display the SQL query
+                    st.markdown("The following query was executed:")
+                    st.markdown("```sql\n" + query_part + "\n```")
+                    # st.code(query_part, language="sql")
+                    
+                    # Display the results in a table
+                    df = display_table.run(results)
+                    st.dataframe(
+                        df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Save in session state
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": "```sql\n" + query_part + "\n```",
+                        "type": "markdown"
+                    })
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": df,
+                        "type": "dataframe"
+                    })
+                else:
+                    st.markdown(response)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": response,
+                        "type": "markdown"
+                    })
                 
             except Exception as e:
                 error_message = f"An error occurred: {str(e)}"
                 st.error(error_message)
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": error_message
+                    "content": error_message,
+                    "type": "markdown"
                 })
 
 uploaded_vector_file = st.file_uploader("Upload a PDF or TXT file for unstructured data", type=["pdf", "txt"])

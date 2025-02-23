@@ -261,13 +261,9 @@ def display_table(query_results: str) -> str:
         print("DataFrame:", df)
         
         # Display using streamlit
-        st.dataframe(
-            df,
-            use_container_width=True,
-            hide_index=True
-        )
         
-        return "Table displayed successfully"
+        
+        return df
             
     except Exception as e:
         print("Error details:", str(e))
