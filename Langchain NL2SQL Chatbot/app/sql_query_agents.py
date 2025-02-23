@@ -7,6 +7,7 @@ import streamlit as st
 
 llm = get_llm()
 
+# Define the SQL Developer Agent
 sql_dev = Agent(
     role="Senior Database Developer",
     goal="Construct and execute SQL queries based on a request",
@@ -26,6 +27,7 @@ sql_dev = Agent(
     allow_delegation=False,
 )
 
+# Define the task
 extract_data = Task(
     description=dedent(
         """
@@ -58,6 +60,5 @@ sql_crew = Crew(
     output_log_file="crew.log",
 )
 
-
-# Export the crew and agent function
-__all__ = ['sql_crew']
+# Export the crew and agent
+__all__ = ['sql_crew', 'sql_dev']

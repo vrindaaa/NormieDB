@@ -16,6 +16,7 @@ class PrepareSQLFromTabularData:
     """
     
     def __init__(self, files_dir) -> None:
+        print(db_user, db_password, db_host, db_name)
         self.files_directory = files_dir
         self.file_dir_list = os.listdir(files_dir)
         self.db = create_engine(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}")
@@ -41,6 +42,7 @@ class PrepareSQLFromTabularData:
         st.info("Available tables in SQL DB: " + ", ".join(table_names))
 
     def _visualize_schema(self):
+        print("Visualizing schema")
         metadata = MetaData()
         metadata.reflect(bind=self.db)
 
@@ -65,9 +67,8 @@ class PrepareSQLFromTabularData:
                                     concentrate=True,
                                     relation_options=relation_options,
                                     format_table_name=format_table_name)
-
-
-
+        
+        print("Graph created")
 
         graph.set("label",  "Schema Diagram -- "+ db_name) 
         graph.set("fontsize", "20")  
@@ -77,12 +78,12 @@ class PrepareSQLFromTabularData:
 
 
 
-        graph.write_png('./database_schema_diagram.png')
-        st.image('./database_schema_diagram.png',
-                 use_container_width=True)
+        graph.write_png('database_schema_diagram.png')
+        print("HERE")
+        st.image('database_schema_diagram.png')
         st.session_state.messages.append({
             "role": "assistant",
-            "content": "./database_schema_diagram.png",
+            "content": "database_schema_diagram.png",
             "type": "image"
         })
 
