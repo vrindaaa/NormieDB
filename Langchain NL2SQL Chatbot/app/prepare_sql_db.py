@@ -81,11 +81,11 @@ class PrepareSQLFromTabularData:
         graph.write_png('database_schema_diagram.png')
         print("HERE")
         st.image('database_schema_diagram.png')
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": "database_schema_diagram.png",
-            "type": "image"
-        })
+        # st.session_state.messages.append({
+        #     "role": "assistant",
+        #     "content": "database_schema_diagram.png",
+        #     "type": "image"
+        # })
 
     def run_pipeline(self):
         self._prepare_db()
