@@ -239,3 +239,36 @@ def decide_route(query: str) -> str:
     """
     print(query)
     return "SQL"
+
+@tool("display_table")
+def display_table(query_results: str) -> str:
+    """
+    Display the query results in tabular format.
+    
+    Args:
+        query_results (str): String containing the query results in semicolon-separated CSV format
+    """
+    print("Raw query results:", query_results)
+    try:
+        # Convert semicolon-separated string to DataFrame
+        import io
+        df = pd.read_csv(
+            io.StringIO(query_results),
+            sep=';',
+            encoding='utf-8'
+        )
+        
+        print("DataFrame:", df)
+        
+        # Display using streamlit
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        return "Table displayed successfully"
+            
+    except Exception as e:
+        print("Error details:", str(e))
+        return f"Error displaying table: {str(e)}"

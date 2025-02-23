@@ -1,11 +1,12 @@
 import streamlit as st
 from openai import OpenAI
-from agents import sql_crew
+from sql_query_agents import sql_crew
 from nosql_agents import sql_crew_nosql
 import os
 import pandas as pd
 from pyprojroot import here
 import yaml
+from tools import display_table
 
 import pandas as pd
 from prepare_sql_db import PrepareSQLFromTabularData
@@ -30,6 +31,38 @@ if "openai_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+def sql_query_agent(inputs):
+    response = sql_crew.kickoff(inputs=inputs)
+
+    print("response", response)
+    
+    # Parse query and results
+    if "QUERY:" in response and "RESULTS:" in response:
+        parts = response.split("RESULTS:")
+        query_part = parts[0].replace("QUERY:", "").strip()
+        results = parts[1].strip().replace("`", "").replace(";\n", "\n").strip()
+        
+        # Display the SQL query
+        st.markdown("The following query was executed:")
+        st.markdown(query_part)
+        # st.code(query_part, language="sql")
+        
+        # Display the results in a table
+        display_table.run(results)
+        
+        # Save in session state
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response
+        })
+    else:
+        st.markdown(response)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response
+        })
+
+
 def get_recent_messages(messages, limit=5):
     """Get only the most recent messages to stay within token limits"""
     return messages[-limit:] if len(messages) > limit else messages
@@ -48,64 +81,14 @@ if prompt := st.chat_input("Ask me anything about the database"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Analyzing and visualizing data..."):
+        with st.spinner("Analyzing data..."):
             try:
                 recent_messages = get_recent_messages(st.session_state.messages)
                 inputs = {
                     "query": prompt,
                     "messages": recent_messages
                 }
-
-                if "stories" in prompt:
-                    response = sql_crew_nosql.kickoff(inputs=inputs)
-                    st.markdown(response)
-                    st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": response
-                        })
-
-                else:    
-                    response = sql_crew.kickoff(inputs=inputs)
-                    
-                    # Check if response contains visualization specifications
-                    if "VISUALIZATION:" in response:
-                        parts = response.split("VISUALIZATION:")
-                        analysis = parts[0].replace("ANALYSIS:", "").strip()
-                        viz_specs = parts[1].strip()
-                        
-                        # Parse visualization parameters
-                        viz_type = viz_specs.split("TYPE:")[1].split("\n")[0].strip()
-                        x_axis = viz_specs.split("X_AXIS:")[1].split("\n")[0].strip()
-                        y_axis = viz_specs.split("Y_AXIS:")[1].split("\n")[0].strip() if "Y_AXIS:" in viz_specs else None
-                        title = viz_specs.split("TITLE:")[1].split("\n")[0].strip()
-                        query = viz_specs.split("QUERY:")[1].strip()
-                        
-                        # Get data from query
-                        data = pd.read_sql_query(query, engine)
-                        
-                        # Create visualization
-                        viz_result = create_visualization(
-                            data=data,
-                            type_of_graph=viz_type,
-                            title=title,
-                            x=x_axis,
-                            y=y_axis
-                        )
-                        
-                        # Display analysis
-                        st.markdown(analysis)
-                        
-                        # Save in session state
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": f"{analysis}\n\n{viz_result}"
-                        })
-                    else:
-                        st.markdown(response)
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": response
-                        })
+                sql_query_agent(inputs)
                 
             except Exception as e:
                 error_message = f"An error occurred: {str(e)}"
